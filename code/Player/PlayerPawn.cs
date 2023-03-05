@@ -1,4 +1,6 @@
-﻿namespace DigiWar.Player;
+﻿using System.Linq;
+
+namespace DigiWar.Player;
 
 partial class PlayerPawn : AnimatedEntity
 {
@@ -12,7 +14,7 @@ partial class PlayerPawn : AnimatedEntity
 		if ( spawnpoint != null )
 		{
 			var tx = spawnpoint.Transform;
-			tx.Position = tx.Position + Vector3.Up * 150.0f; // raise it up
+			tx.Position = tx.Position + Vector3.Up * 150.0f;
 			Transform = tx;
 		}
 	}
@@ -20,8 +22,6 @@ partial class PlayerPawn : AnimatedEntity
 	public override void Spawn()
 	{
 		base.Spawn();
-
-		SetModel( "models/sbox_props/watermelon/watermelon.vmdl" );
 
 		MoveToSpawnpoint();
 
@@ -38,8 +38,11 @@ partial class PlayerPawn : AnimatedEntity
 
 		var viewAngles = ViewAngles;
 		viewAngles += look;
+		viewAngles.pitch = viewAngles.pitch.Clamp( -90, 90 );
 		ViewAngles = viewAngles.Normal;
 	}
+
+	Vector3 lookAt;
 
 	public override void Simulate( IClient cl )
 	{
@@ -47,26 +50,40 @@ partial class PlayerPawn : AnimatedEntity
 
 		Rotation = ViewAngles.ToRotation();
 
-		var movement = InputDirection.Normal;
+		float speed = 350.0f;
+		float deltaSpeed = 8.0f;
 
-		Velocity = Rotation * movement;
+		var velocity = Vector3.Zero;
 
-		Velocity *= Input.Down( InputButton.Run ) ? 500 : 200;
+		if ( Input.Down( InputButton.Forward ) )
+			velocity += Camera.Rotation.Forward.WithZ( 0 ) * speed;
 
-		Velocity = Velocity.WithZ( 0 );
+		if ( Input.Down( InputButton.Back ) )
+			velocity += Camera.Rotation.Backward.WithZ( 0 ) * speed;
+
+		if ( Input.Down( InputButton.Left ) )
+			velocity += Camera.Rotation.Left * speed;
+
+		if ( Input.Down( InputButton.Right ) )
+			velocity += Camera.Rotation.Right * speed;
 
 		if(Input.MouseWheel != 0)
 		{
-			Velocity = Velocity.WithZ( Input.MouseWheel * 250 );
+			velocity = velocity.WithZ( Input.MouseWheel * 250 );
 		}
 
-		MoveHelper helper = new MoveHelper( Position, Velocity );
+		var lookAtPosition = lookAt + velocity * Time.Delta;
+		lookAt = lookAtPosition;
+
+		var helper = new MoveHelper( Camera.Position, velocity );
 		helper.Trace = helper.Trace.Size( 16 );
-		
-		if ( helper.TryMove( Time.Delta ) > 0 )
+
+		if(helper.TryMoveWithStep(Time.Delta * deltaSpeed, 2.0f) > 0)
 		{
-			Position = helper.Position;
+			lookAt = helper.Position;
 		}
+
+		Camera.Position = Camera.Position.LerpTo( lookAt, Time.Delta * deltaSpeed / 2 );	
 	}
 
 	/// <summary>
@@ -76,9 +93,7 @@ partial class PlayerPawn : AnimatedEntity
 	{
 		base.FrameSimulate( cl );
 
-		Rotation = ViewAngles.ToRotation();
-
-		Camera.Position = Position;
+		//Camera.Position = Position;
 		Camera.Rotation = Rotation;
 
 		Camera.FieldOfView = Screen.CreateVerticalFieldOfView( Game.Preferences.FieldOfView );
