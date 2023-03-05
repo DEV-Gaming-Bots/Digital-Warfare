@@ -55,6 +55,7 @@ partial class PlayerPawn : AnimatedEntity
 
 		MoveHelper helper = new MoveHelper( Position, Velocity );
 		helper.Trace = helper.Trace.Size( 16 );
+		
 		if ( helper.TryMove( Time.Delta ) > 0 )
 		{
 			Position = helper.Position;
