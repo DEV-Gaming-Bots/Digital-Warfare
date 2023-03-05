@@ -51,7 +51,14 @@ partial class PlayerPawn : AnimatedEntity
 
 		Velocity = Rotation * movement;
 
-		Velocity *= Input.Down( InputButton.Run ) ? 1000 : 200;
+		Velocity *= Input.Down( InputButton.Run ) ? 500 : 200;
+
+		Velocity = Velocity.WithZ( 0 );
+
+		if(Input.MouseWheel != 0)
+		{
+			Velocity = Velocity.WithZ( Input.MouseWheel * 250 );
+		}
 
 		MoveHelper helper = new MoveHelper( Position, Velocity );
 		helper.Trace = helper.Trace.Size( 16 );
